@@ -17,7 +17,7 @@ var to = setTimeout(function(){ },12345678);
 //Start streaming
 pr.once('audio_ready', function(pa) {
   pr.pipe(ws);
-  pr.pa.inputStart();
+  pr.pa.InputStreamStart();
 });
 
 //Clear timeout

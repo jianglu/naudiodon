@@ -52,22 +52,8 @@ function AudioReader (opts) {
   opts.device = opts.device || -1;
   var localPush = this.push;
   var reader = this;
-  var paud = portAudioBindings.openInput(opts);
+  var paud = new portAudioBindings.AudioInput(opts);
   this.pa = paud;
-  var callback = function(){
-    pushAccepted = true;
-    while(pushAccepted && paud.inputItemsAvailable() > 0){
-      pushAccepted = reader.push(paud.inputRead());
-    }
-    //Prevent any further pushes until _read() is next called
-    if(!pushAccepted){
-      paud.disablePush();
-    }
-  };
-  this._read = function(){
-    callback.bind(this);
-    this.pa.inputSetCallback(callback);
-  }.bind(this);
   setImmediate(this.emit.bind(this, 'audio_ready', this.pa));
   this.on('finish', function () {
     console.log("Closing input stream.");
@@ -76,6 +62,25 @@ function AudioReader (opts) {
 }
 
 util.inherits(AudioReader, Readable);
+
+AudioReader.prototype._read = function(){
+  var self = this;
+  console.log(this);
+  var callback = function(){
+    pushAccepted = true;
+    while(pushAccepted && self.pa.ItemsAvailable() > 0){
+      pushAccepted = self.push(self.pa.ReadableRead());
+    }
+    //Prevent any further pushes until _read() is next called
+    if(!pushAccepted){
+      this.pa.disablePush();
+    }
+  };
+  callback.bind(this);
+  this.pa.InputSetCallback(callback);
+}
+
+
 exports.AudioReader = AudioReader;
 
 exports.getDevices = portAudioBindings.getDevices;
