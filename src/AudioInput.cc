@@ -52,6 +52,7 @@ NAN_METHOD(OpenInput) {
   Nan::MaybeLocal<v8::Object> v8Stream;
   PortAudioData* data;
   int sampleRate;
+  int framesPerBuffer;
   char str[1000];
   Nan::MaybeLocal<v8::Value> v8Val;
 
@@ -60,7 +61,7 @@ NAN_METHOD(OpenInput) {
   req = new uv_async_t;
   uv_async_init(uv_default_loop(),req,ReadableCallback);
   uv_mutex_init(&padlock);
-  
+
   err = EnsureInitialized();
   if(err != paNoError) {
      sprintf(str, "Could not initialize PortAudio: %s", Pa_GetErrorText(err));
@@ -123,11 +124,14 @@ NAN_METHOD(OpenInput) {
   v8Val = Nan::Get(options.ToLocalChecked(), Nan::New("sampleRate").ToLocalChecked());
   sampleRate = Nan::To<int32_t>(v8Val.ToLocalChecked()).FromMaybe(44100);
 
+  v8Val = Nan::Get(options.ToLocalChecked(), Nan::New("framesPerBuffer").ToLocalChecked());
+  framesPerBuffer = Nan::To<int32_t>(v8Val.ToLocalChecked()).FromMaybe(FRAMES_PER_BUFFER);
+
   data = new PortAudioData();
   data->channelCount = inputParameters.channelCount;
   data->sampleFormat = inputParameters.sampleFormat;
 
-  
+
   v8Stream = Nan::New(streamConstructor)->NewInstance();
   Nan::SetInternalFieldPointer(v8Stream.ToLocalChecked(), 0, data);
 
@@ -140,7 +144,7 @@ NAN_METHOD(OpenInput) {
     &inputParameters,
     NULL,//No output
     sampleRate,
-    FRAMES_PER_BUFFER,
+    framesPerBuffer,
     0,//No flags being used
     nodePortAudioInputCallback,
     data);
@@ -162,7 +166,7 @@ NAN_METHOD(OpenInput) {
     Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InputSetCallback)).ToLocalChecked());
   Nan::Set(v8Stream.ToLocalChecked(), Nan::New("disablePush").ToLocalChecked(),
     Nan::GetFunction(Nan::New<v8::FunctionTemplate>(DisablePush)).ToLocalChecked());
-  
+
   info.GetReturnValue().Set(v8Stream.ToLocalChecked());
 
 }
@@ -220,7 +224,7 @@ NAN_METHOD(ReadableRead) {
     info.GetReturnValue().SetUndefined();
     return;
   }
-  
+
   //Calculate memory required to transfer entire buffer stack
   size_t totalMem = bufferStack.front().size();
 
@@ -308,6 +312,6 @@ static int nodePortAudioInputCallback(
   if(ret < 0){
     cerr << "Got uv async return code of " << ret;
   }
-  
+
   return paContinue;
 }
